@@ -1,0 +1,21 @@
+name: Github Sync (not enabled)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Github Sync
+        uses: repo-sync/github-sync@v2.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_REPO: REPLACE_WITH_SOURCE_REPO
+          SOURCE_BRANCH: main
+          DESTINATION_BRANCH: main
+
+# Not enabled: no source repository was specified and sync can overwrite code.

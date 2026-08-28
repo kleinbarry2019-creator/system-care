@@ -1,0 +1,20 @@
+name: anti-slop
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  anti-slop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - name: anti-slop
+        uses: peakoss/anti-slop@v0.3.0
