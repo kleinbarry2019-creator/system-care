@@ -1,0 +1,17 @@
+name: Lost Pixel (not enabled)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lost-pixel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lost Pixel
+        uses: lost-pixel/lost-pixel@v3.22.0
+        env:
+          LOST_PIXEL_API_KEY: ${{ secrets.LOST_PIXEL_API_KEY }}
+
+# Not enabled: no browser visual-test project/config exists for a native app.

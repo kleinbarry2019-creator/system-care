@@ -1,0 +1,26 @@
+name: Metrics embed
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '31 4 * * 1'
+
+permissions:
+  contents: write
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - name: Metrics embed
+        uses: lowlighter/metrics@v3.34
+        with:
+          token: ${{ secrets.METRICS_TOKEN }}
+          user: kleinbarry2019-creator
+          template: classic
+          base: header, activity, community, repositories
+          filename: github-metrics.svg

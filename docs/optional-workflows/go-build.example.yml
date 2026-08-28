@@ -1,0 +1,12 @@
+name: Go Multi-Platform Build (not enabled)
+
+on: [push]
+
+jobs:
+  go-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Go Multi-Platform Build
+        uses: chihqiang/gobuild-action@v0.2.0
+
+# This repository contains C#/.NET, not a Go module.
