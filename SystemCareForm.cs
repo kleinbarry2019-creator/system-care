@@ -476,13 +476,25 @@ internal sealed class SystemCareForm : Form
         if (items.Count == 0) { MessageBox.Show(this, "Keine Elemente zum Löschen markiert. Setze zuerst den Haken bei 'Löschen'.", "Bereinigung", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
         if (items.Count > 1 && MessageBox.Show(this, $"{items.Count} {description} Elemente in den Papierkorb verschieben?", "Bereinigung", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
         int deleted = 0;
+        int skipped = 0;
+        var skippedExamples = new List<string>();
         foreach (var item in items)
         {
             try { await CleanupScanner.SendToRecycleBinAsync(item); _cleanupItems.Remove(item); deleted++; }
-            catch (Exception ex) { _cleanupStatus!.Text = $"Übersprungen: {item.Path} – {ex.Message}"; }
+            catch (Exception ex)
+            {
+                skipped++;
+                if (skippedExamples.Count < 2) skippedExamples.Add($"{Path.GetFileName(item.Path)}: {ex.Message}");
+            }
         }
         PopulateCleanupGrid();
-        if (_cleanupStatus is not null) _cleanupStatus.Text = $"{deleted} Element(e) in den Papierkorb verschoben. Scanliste aktualisiert.";
+        if (_cleanupStatus is not null)
+        {
+            string status = $"{deleted} Element(e) in den Papierkorb verschoben. Scanliste aktualisiert.";
+            if (skipped > 0) status += $" {skipped} übersprungen (geschützt/nicht verfügbar).";
+            if (skippedExamples.Count > 0) status += $" Beispiel: {skippedExamples[0]}";
+            _cleanupStatus.Text = status;
+        }
     }
 
     private void PopulateUpdatesGrid()

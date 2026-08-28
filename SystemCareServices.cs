@@ -18,20 +18,26 @@ internal static class WindowsUpdateService
 $ErrorActionPreference = 'Stop'
 $session = New-Object -ComObject Microsoft.Update.Session
 $searcher = $session.CreateUpdateSearcher()
-$criteria = if ($env:SC_INCLUDE_DRIVERS -eq '1') { 'IsInstalled=0 and IsHidden=0 and (Type=''Software'' or Type=''Driver'')' } else { 'IsInstalled=0 and IsHidden=0 and Type=''Software''' }
-$search = $searcher.Search($criteria)
-$items = @()
-for ($i = 0; $i -lt $search.Updates.Count; $i++) {
-  $update = $search.Updates.Item($i)
-  $items += [pscustomobject]@{
-    UpdateId = [string]$update.Identity.UpdateID
-    Title = [string]$update.Title
-    KbArticles = (@($update.KBArticleIDs) -join ', ')
-    Categories = (@($update.Categories | ForEach-Object { $_.Name }) -join ', ')
-    SizeMb = [math]::Round(([double]$update.MaxDownloadSize / 1MB), 1)
+$criteriaList = if ($env:SC_INCLUDE_DRIVERS -eq '1') {
+  @('IsInstalled=0 and IsHidden=0 and Type=''Software''', 'IsInstalled=0 and IsHidden=0 and Type=''Driver''')
+} else {
+  @('IsInstalled=0 and IsHidden=0 and Type=''Software''')
+}
+$items = @{}
+foreach ($criteria in $criteriaList) {
+  $search = $searcher.Search($criteria)
+  for ($i = 0; $i -lt $search.Updates.Count; $i++) {
+    $update = $search.Updates.Item($i)
+    $items[[string]$update.Identity.UpdateID] = [pscustomobject]@{
+      UpdateId = [string]$update.Identity.UpdateID
+      Title = [string]$update.Title
+      KbArticles = (@($update.KBArticleIDs) -join ', ')
+      Categories = (@($update.Categories | ForEach-Object { $_.Name }) -join ', ')
+      SizeMb = [math]::Round(([double]$update.MaxDownloadSize / 1MB), 1)
+    }
   }
 }
-@($items) | ConvertTo-Json -Compress -Depth 4
+@($items.Values) | ConvertTo-Json -Compress -Depth 4
 ";
 
     private const string InstallScriptTemplate = @"
@@ -39,12 +45,19 @@ $ErrorActionPreference = 'Stop'
 $wantedId = '__UPDATE_ID__'
 $session = New-Object -ComObject Microsoft.Update.Session
 $searcher = $session.CreateUpdateSearcher()
-$criteria = if ($env:SC_INCLUDE_DRIVERS -eq '1') { 'IsInstalled=0 and IsHidden=0 and (Type=''Software'' or Type=''Driver'')' } else { 'IsInstalled=0 and IsHidden=0 and Type=''Software''' }
-$search = $searcher.Search($criteria)
+$criteriaList = if ($env:SC_INCLUDE_DRIVERS -eq '1') {
+  @('IsInstalled=0 and IsHidden=0 and Type=''Software''', 'IsInstalled=0 and IsHidden=0 and Type=''Driver''')
+} else {
+  @('IsInstalled=0 and IsHidden=0 and Type=''Software''')
+}
 $target = $null
-for ($i = 0; $i -lt $search.Updates.Count; $i++) {
-  $candidate = $search.Updates.Item($i)
-  if ([string]$candidate.Identity.UpdateID -eq $wantedId) { $target = $candidate; break }
+foreach ($criteria in $criteriaList) {
+  $search = $searcher.Search($criteria)
+  for ($i = 0; $i -lt $search.Updates.Count; $i++) {
+    $candidate = $search.Updates.Item($i)
+    if ([string]$candidate.Identity.UpdateID -eq $wantedId) { $target = $candidate; break }
+  }
+  if ($null -ne $target) { break }
 }
 if ($null -eq $target) {
   [pscustomobject]@{ Success = $false; Title = ''; Message = 'Update ist nicht mehr verfügbar oder bereits installiert.'; RebootRequired = $false } | ConvertTo-Json -Compress
@@ -209,7 +222,7 @@ internal static class CleanupScanner
                 try
                 {
                     var info = new FileInfo(path);
-                    if (!info.Exists || info.Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
+                    if (!info.Exists || info.Attributes.HasFlag(FileAttributes.ReparsePoint) || IsProtectedFile(path)) continue;
                     files.Add(new FileCandidate(path, info.Length, info.LastWriteTimeUtc));
                     visited++;
                     if (visited % 250 == 0) progress?.Report($"{visited:N0} Dateien geprüft");
@@ -337,7 +350,7 @@ internal static class CleanupScanner
             foreach (string file in files) yield return file;
             IEnumerable<string> directories;
             try { directories = Directory.EnumerateDirectories(directory); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException) { warnings.Add($"{directory}: {ex.GetType().Name}"); continue; }
-            foreach (string child in directories) if (!IsProtectedDirectory(child)) pending.Push(child);
+            foreach (string child in directories) if (!IsProtectedDirectory(child) && !IsReparsePointDirectory(child)) pending.Push(child);
         }
     }
 
@@ -347,12 +360,33 @@ internal static class CleanupScanner
         string windows = Path.GetFullPath(Environment.GetEnvironmentVariable("WINDIR") ?? "C:\\Windows").TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         string programFiles = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         string programFilesX86 = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        string programData = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData)).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         return full.StartsWith(windows, StringComparison.OrdinalIgnoreCase)
             || full.StartsWith(programFiles, StringComparison.OrdinalIgnoreCase)
             || full.StartsWith(programFilesX86, StringComparison.OrdinalIgnoreCase)
+            || full.StartsWith(programData, StringComparison.OrdinalIgnoreCase)
             || full.Contains("\\$Recycle.Bin\\", StringComparison.OrdinalIgnoreCase)
             || full.Contains("\\System Volume Information\\", StringComparison.OrdinalIgnoreCase)
+            || full.Contains("\\AppData\\Local\\Temp\\VBCSCompiler\\", StringComparison.OrdinalIgnoreCase)
             || full.Contains("\\AppData\\Local\\Packages\\", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsReparsePointDirectory(string path)
+    {
+        try { return new DirectoryInfo(path).Attributes.HasFlag(FileAttributes.ReparsePoint); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException) { return true; }
+    }
+
+    private static bool IsProtectedFile(string path)
+    {
+        string full = Path.GetFullPath(path);
+        string? root = Path.GetPathRoot(full);
+        if (string.IsNullOrEmpty(root)) return false;
+        string name = Path.GetFileName(full);
+        return full.Equals(Path.Combine(root, "hiberfil.sys"), StringComparison.OrdinalIgnoreCase)
+            || full.Equals(Path.Combine(root, "pagefile.sys"), StringComparison.OrdinalIgnoreCase)
+            || full.Equals(Path.Combine(root, "swapfile.sys"), StringComparison.OrdinalIgnoreCase)
+            || name.Equals("MEMORY.DMP", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsTemporaryPath(string path) => path.Contains("\\AppData\\Local\\Temp\\", StringComparison.OrdinalIgnoreCase)
