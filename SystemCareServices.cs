@@ -37,7 +37,7 @@ foreach ($criteria in $criteriaList) {
     }
   }
 }
-@($items.Values) | ConvertTo-Json -Compress -Depth 4
+ConvertTo-Json -InputObject ([object[]]$items.Values) -Compress -Depth 4
 ";
 
     private const string InstallScriptTemplate = @"
@@ -93,7 +93,15 @@ $result = $installer.Install()
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException("Die Windows-Update-Antwort konnte nicht gelesen werden.", ex);
+            try
+            {
+                var single = JsonSerializer.Deserialize<UpdateInfo>(result.Output, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return single is null ? Array.Empty<UpdateInfo>() : new[] { single };
+            }
+            catch (JsonException)
+            {
+                throw new InvalidOperationException("Die Windows-Update-Antwort konnte nicht gelesen werden.", ex);
+            }
         }
     }
 
