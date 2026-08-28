@@ -91,6 +91,8 @@ internal sealed class SystemCareConfig
     public bool EnableGamingOptimization { get; set; } = true;
     public int TempFileAgeDays { get; set; } = 7;
     public string DailyTime { get; set; } = "03:15";
+    public string ScheduleFrequency { get; set; } = "DAILY";
+    public string ScheduleDayOfWeek { get; set; } = "MON";
     public List<string> DebloatPackages { get; set; } = SafeDebloatAllowlist.ToList();
 
     public static string DataDirectory => Path.Combine(
@@ -116,6 +118,9 @@ internal sealed class SystemCareConfig
         config ??= new SystemCareConfig();
         config.TempFileAgeDays = Math.Clamp(config.TempFileAgeDays, 1, 90);
         if (!TimeSpan.TryParse(config.DailyTime, out _)) config.DailyTime = "03:15";
+        config.ScheduleFrequency = config.ScheduleFrequency.Equals("WEEKLY", StringComparison.OrdinalIgnoreCase) ? "WEEKLY" : "DAILY";
+        var allowedDays = new[] { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+        if (!allowedDays.Contains(config.ScheduleDayOfWeek, StringComparer.OrdinalIgnoreCase)) config.ScheduleDayOfWeek = "MON";
         config.DebloatPackages = (config.DebloatPackages ?? new List<string>())
             .Where(candidate => SafeDebloatAllowlist.Contains(candidate, StringComparer.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -130,6 +135,12 @@ internal sealed class SystemCareConfig
         {
             File.WriteAllText(ConfigPath, JsonSerializer.Serialize(new SystemCareConfig(), new JsonSerializerOptions { WriteIndented = true }));
         }
+    }
+
+    public void Save()
+    {
+        Directory.CreateDirectory(DataDirectory);
+        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
     }
 }
 
@@ -421,7 +432,7 @@ $results | ConvertTo-Json -Compress
         return false;
     }
 
-    private static bool IsAdministrator()
+    internal static bool IsAdministrator()
     {
         using var identity = WindowsIdentity.GetCurrent();
         return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
@@ -467,7 +478,13 @@ internal static class TaskSchedulerManager
         string executable = Environment.ProcessPath ?? throw new InvalidOperationException("Executablepfad fehlt.");
         if (!TimeSpan.TryParse(config.DailyTime, out var time)) time = new TimeSpan(3, 15, 0);
         string taskCommand = $"\"{executable}\" --run-once --scheduled";
-        var result = await RunSchtasksAsync(["/Create", "/TN", TaskName, "/TR", taskCommand, "/SC", "DAILY", "/ST", time.ToString(@"hh\:mm"), "/RL", "HIGHEST", "/F"]);
+        var arguments = new List<string> { "/Create", "/TN", TaskName, "/TR", taskCommand, "/SC", config.ScheduleFrequency, "/ST", time.ToString(@"hh\:mm"), "/RL", "HIGHEST", "/F" };
+        if (config.ScheduleFrequency.Equals("WEEKLY", StringComparison.OrdinalIgnoreCase))
+        {
+            arguments.Insert(arguments.IndexOf("/ST"), "/D");
+            arguments.Insert(arguments.IndexOf("/ST"), config.ScheduleDayOfWeek);
+        }
+        var result = await RunSchtasksAsync(arguments);
         Console.WriteLine(result.Output.Length > 0 ? result.Output : result.Error);
         return result.ExitCode;
     }
