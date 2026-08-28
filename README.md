@@ -2,6 +2,10 @@
 
 Tägliche, protokollierte Windows-Systempflege mit Windows Update, optionalen Treiber-Updates über Windows Update, WinGet-Updates, alterssicherer Temp-Bereinigung, fester Consumer-App-Allowlist und vorsichtiger Gaming-Optimierung.
 
+## Oberfläche
+
+Ein Doppelklick auf `SystemCare.exe` öffnet das Dashboard mit Task-Status, nächstem Lauf, Dry-Run-Prüfung sowie Schaltflächen für Konfiguration und Logs. Die Kommandozeilenoptionen bleiben für den täglichen Hintergrund-Task und Automatisierung erhalten.
+
 ## Sichere Inbetriebnahme
 
 ```powershell

@@ -7,6 +7,7 @@ namespace SystemCare;
 
 internal static class Program
 {
+    [STAThread]
     private static async Task<int> Main(string[] args)
     {
         if (args.Any(arg => string.Equals(arg, "--self-test", StringComparison.OrdinalIgnoreCase)))
@@ -51,7 +52,8 @@ internal static class Program
 
         if (!args.Any(arg => string.Equals(arg, "--run-once", StringComparison.OrdinalIgnoreCase)))
         {
-            Console.WriteLine(Usage.Text);
+            ApplicationConfiguration.Initialize();
+            Application.Run(new SystemCareForm(config));
             return 0;
         }
 
@@ -454,6 +456,11 @@ internal sealed class AuditLog : IDisposable
 internal static class TaskSchedulerManager
 {
     private const string TaskName = "GamingSystemCare Daily";
+
+    public static async Task<CommandResult> QueryAsync()
+    {
+        return await RunSchtasksAsync(["/Query", "/TN", TaskName, "/FO", "LIST", "/V"]);
+    }
 
     public static async Task<int> InstallAsync(SystemCareConfig config)
     {
