@@ -180,7 +180,7 @@ internal sealed class SystemCareForm : Form
         actions.Controls.Add(_scanUpdatesButton);
         actions.Controls.Add(_installAllUpdatesButton);
         root.Controls.Add(actions, 0, 0);
-        _updatesStatus = new Label { Dock = DockStyle.Fill, Text = "Noch kein Scan ausgeführt.", ForeColor = Color.FromArgb(148, 163, 184), Padding = new Padding(2, 8, 0, 0) };
+        _updatesStatus = new Label { Dock = DockStyle.Fill, AutoSize = false, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, Text = "Noch kein Scan ausgeführt.", ForeColor = Color.FromArgb(148, 163, 184), Padding = new Padding(2, 0, 0, 0) };
         root.Controls.Add(_updatesStatus, 0, 1);
         _updatesGrid = CreateGrid();
         _updatesGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KB / ID", Width = 110, Name = "kb" });
