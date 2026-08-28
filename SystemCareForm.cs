@@ -210,9 +210,15 @@ internal sealed class SystemCareForm : Form
         _scanCleanupButton.Click += async (_, _) => await ScanCleanupAsync();
         var deleteSelected = MakeButton("Markierte löschen", Color.FromArgb(185, 28, 28));
         deleteSelected.Click += async (_, _) => await DeleteMarkedCleanupAsync();
+        var markAll = MakeButton("Alle markieren", Color.FromArgb(71, 85, 105));
+        markAll.Click += (_, _) => SetCleanupSelection(markForDeletion: true);
+        var clearMarks = MakeButton("Markierungen entfernen", Color.FromArgb(71, 85, 105));
+        clearMarks.Click += (_, _) => SetCleanupSelection(markForDeletion: false);
         _fullCleanupScan = new CheckBox { Text = "Vollscan auf festen Laufwerken (langsamer)", AutoSize = true, ForeColor = Color.FromArgb(203, 213, 225), Padding = new Padding(8, 9, 0, 0), Checked = false };
         actions.Controls.Add(_scanCleanupButton);
         actions.Controls.Add(deleteSelected);
+        actions.Controls.Add(markAll);
+        actions.Controls.Add(clearMarks);
         actions.Controls.Add(_fullCleanupScan);
         root.Controls.Add(actions, 0, 0);
 
@@ -221,7 +227,7 @@ internal sealed class SystemCareForm : Form
         _cleanupStatus = new Label { Dock = DockStyle.Fill, Text = "Noch kein Bereinigungsscan ausgeführt. Dateien werden nur aufgelistet; Löschen geht in den Papierkorb.", ForeColor = Color.FromArgb(148, 163, 184), Padding = new Padding(2, 8, 0, 0) };
         root.Controls.Add(_cleanupStatus, 0, 2);
         _cleanupGrid = CreateGrid();
-        _cleanupGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Behalten", Width = 72, Name = "keep" });
+        _cleanupGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Behalten (aus = löschen)", Width = 142, Name = "keep" });
         _cleanupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Kategorie", Width = 155, Name = "category" });
         _cleanupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Pfad", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, Name = "path" });
         _cleanupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Grund", Width = 255, Name = "reason" });
@@ -447,6 +453,18 @@ internal sealed class SystemCareForm : Form
         await DeleteCleanupItemsAsync(_cleanupItems.Where(item => !item.Keep).ToList(), "markierten");
     }
 
+    private void SetCleanupSelection(bool markForDeletion)
+    {
+        foreach (var item in _cleanupItems) item.Keep = !markForDeletion;
+        PopulateCleanupGrid();
+        if (_cleanupStatus is not null)
+        {
+            _cleanupStatus.Text = markForDeletion
+                ? $"{_cleanupItems.Count:N0} Elemente für 'Markierte löschen' vorgemerkt."
+                : "Alle Markierungen entfernt; alle Elemente stehen wieder auf Behalten.";
+        }
+    }
+
     private async Task DeleteCleanupItemAsync(CleanupItem item)
     {
         if (MessageBox.Show(this, $"In den Papierkorb verschieben?\n\n{item.Path}", "Datei löschen", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
@@ -491,7 +509,9 @@ internal sealed class SystemCareForm : Form
             card.Controls.Add(new Label { AutoSize = true, Text = summary.Category, ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), Location = new Point(10, 8) });
             card.Controls.Add(new Label { AutoSize = true, Text = $"{summary.Count} · {FormatBytes(summary.SizeBytes)}", ForeColor = Color.FromArgb(148, 163, 184), Location = new Point(10, 31) });
             var button = new Button { Text = "Kategorie bereinigen", AutoSize = true, Height = 26, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(127, 29, 29), ForeColor = Color.White, Location = new Point(112, 28), Padding = new Padding(4, 0, 4, 0) };
-            button.Click += async (_, _) => await DeleteCleanupItemsAsync(_cleanupItems.Where(item => item.Category.Equals(summary.Category, StringComparison.OrdinalIgnoreCase) && !item.Keep).ToList(), $"der Kategorie '{summary.Category}'");
+            // A category action is explicit and independent of row checkboxes:
+            // it always operates on every item currently in that category.
+            button.Click += async (_, _) => await DeleteCleanupItemsAsync(_cleanupItems.Where(item => item.Category.Equals(summary.Category, StringComparison.OrdinalIgnoreCase)).ToList(), $"der Kategorie '{summary.Category}'");
             card.Controls.Add(button);
             _cleanupCategories.Controls.Add(card);
         }
