@@ -1,0 +1,14 @@
+name: Pull Request Action (not enabled)
+
+on: [workflow_dispatch]
+
+jobs:
+  pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull Request Action
+        uses: vsoch/pull-request-action@1.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# Not enabled: automated PR creation is intentionally not part of the build.

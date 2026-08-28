@@ -1,0 +1,20 @@
+name: Pensar scan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pensar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - name: Pensar scan
+        uses: pensarai/cli@v0.2.2-alpha

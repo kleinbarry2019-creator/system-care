@@ -1,0 +1,20 @@
+name: Semcheck
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  semcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - name: Semcheck
+        uses: rejot-dev/semcheck@v1.2.1

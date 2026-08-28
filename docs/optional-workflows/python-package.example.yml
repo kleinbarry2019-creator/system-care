@@ -1,0 +1,11 @@
+name: Build and Inspect a Python Package (not enabled)
+
+on: [push]
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hynek/build-and-inspect-python-package@v3.0.1
+
+# This repository contains C#/.NET, not a Python package.

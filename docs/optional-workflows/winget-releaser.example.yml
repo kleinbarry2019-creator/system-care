@@ -1,0 +1,25 @@
+name: WinGet Releaser (after manifest publication)
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  winget:
+    runs-on: windows-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - name: WinGet Releaser
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: kleinbarry2019-creator.SystemCare
+          installers-regex: '\\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+
+# Kept outside .github/workflows until a winget-pkgs manifest exists.

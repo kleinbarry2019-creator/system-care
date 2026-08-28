@@ -1,0 +1,23 @@
+name: Autofill PR description
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  openai-pr-description:
+    runs-on: ubuntu-22.04
+    if: github.event.pull_request.head.repo.fork == false
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - uses: platisd/openai-pr-description@v1.5.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}

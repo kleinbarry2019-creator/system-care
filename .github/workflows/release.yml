@@ -1,0 +1,33 @@
+name: Build and Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+      - name: Restore and publish
+        shell: pwsh
+        run: |
+          dotnet restore .\SystemCare.csproj
+          dotnet publish .\SystemCare.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\publish
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3.0.2
+        with:
+          generate_release_notes: true
+          files: publish/SystemCare.exe

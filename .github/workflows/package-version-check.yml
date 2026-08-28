@@ -1,0 +1,21 @@
+name: Package Version Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@v4
+      - name: Package Version Check Action
+        uses: technote-space/package-version-check-action@v1.9.3

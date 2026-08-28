@@ -1,0 +1,26 @@
+name: ChatGPT comment (optional legacy integration)
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  chatgpt_comment:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.fork == false
+    steps:
+      - name: ChatGPT comment
+        uses: kxxt/chatgpt-action@v0.3
+        with:
+          number: ${{ github.event.pull_request.number }}
+          sessionToken: ${{ secrets.CHATGPT_SESSION_TOKEN }}
+          split: 'yolo'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# This workflow is intentionally outside .github/workflows. Move it only if
+# you explicitly accept the legacy consumer-session-token risk.

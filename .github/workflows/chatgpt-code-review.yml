@@ -1,0 +1,33 @@
+name: ChatGPT Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  code_review_job:
+    # Secrets are intentionally not sent to workflows for fork PRs.
+    if: github.event.pull_request.head.repo.fork == false
+    runs-on: ubuntu-latest
+    name: ChatGPT Code Review
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - name: GenAI Code Review
+        uses: cirolini/genai-code-review@v2
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_pr_id: ${{ github.event.number }}
+          openai_model: "gpt-3.5-turbo"
+          openai_temperature: 0.5
+          openai_max_tokens: 2048
+          mode: files
+          language: en
+          custom_prompt: "Review for correctness, Windows compatibility, least privilege, and resource usage."

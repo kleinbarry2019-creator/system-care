@@ -1,0 +1,28 @@
+{
+  "DryRun": false,
+  "EnableWindowsUpdate": true,
+  "IncludeDriverUpdates": true,
+  "EnableWingetUpdates": true,
+  "EnableTempCleanup": true,
+  "EnableComponentCleanup": true,
+  "EnableDebloat": true,
+  "RemoveProvisionedPackages": false,
+  "EnableGamingOptimization": true,
+  "TempFileAgeDays": 7,
+  "DailyTime": "03:15",
+  "DebloatPackages": [
+    "Microsoft.3DBuilder",
+    "Microsoft.BingNews",
+    "Microsoft.GetHelp",
+    "Microsoft.Getstarted",
+    "Microsoft.MicrosoftOfficeHub",
+    "Microsoft.MicrosoftSolitaireCollection",
+    "Microsoft.People",
+    "Microsoft.SkypeApp",
+    "Microsoft.WindowsMaps",
+    "Microsoft.WindowsFeedbackHub",
+    "Microsoft.YourPhone",
+    "Microsoft.ZuneMusic",
+    "Microsoft.ZuneVideo"
+  ]
+}

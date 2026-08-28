@@ -1,0 +1,34 @@
+name: Accessibility Scanner
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: Newline-delimited URLs to scan
+        required: true
+        type: string
+      cache_key:
+        description: Stable cache filename/domain key
+        required: true
+        default: system-care
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  accessibility_scanner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2.21.0
+        with:
+          egress-policy: audit
+      - uses: github/accessibility-scanner@v3.4.1
+        with:
+          urls: ${{ inputs.urls }}
+          repository: kleinbarry2019-creator/system-care
+          token: ${{ secrets.GH_TOKEN }}
+          cache_key: ${{ inputs.cache_key }}
+          skip_copilot_assignment: true
+          dry_run: false

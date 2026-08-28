@@ -1,0 +1,17 @@
+name: Push git subdirectory as branch (not enabled)
+
+on: [workflow_dispatch]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push git subdirectory as branch
+        uses: s0/git-publish-subdir-action@v2.6.0
+        env:
+          API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: published
+          FOLDER: publish
+
+# Not enabled: release.yml publishes immutable release assets instead.
