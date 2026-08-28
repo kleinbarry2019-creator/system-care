@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Microsoft.VisualBasic.FileIO;
 
 namespace SystemCare;
 
@@ -149,9 +149,48 @@ internal static class CleanupScanner
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!File.Exists(item.Path)) throw new FileNotFoundException("Datei nicht mehr vorhanden.", item.Path);
-            FileSystem.DeleteFile(item.Path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+            SendToRecycleBinSilently(item.Path);
         }, cancellationToken);
     }
+
+    private static void SendToRecycleBinSilently(string path)
+    {
+        // SHFileOperation preserves the recycle-bin behavior while suppressing
+        // Windows error dialogs. Protected files are reported to the UI and
+        // skipped by the caller instead of interrupting the whole cleanup run.
+        var operation = new ShFileOperation
+        {
+            WindowHandle = IntPtr.Zero,
+            Function = 3, // FO_DELETE
+            From = path + "\0\0",
+            To = string.Empty,
+            Flags = 0x0004 | 0x0010 | 0x0040 | 0x0200 | 0x0400,
+            AnyOperationsAborted = 0,
+            NameMappings = IntPtr.Zero,
+            ProgressTitle = string.Empty
+        };
+        int result = SHFileOperation(ref operation);
+        if (result != 0)
+            throw new IOException($"Datei konnte nicht in den Papierkorb verschoben werden (Windows-Fehler {result}).");
+        if (operation.AnyOperationsAborted != 0)
+            throw new IOException("Datei wurde von Windows nicht verschoben.");
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct ShFileOperation
+    {
+        public IntPtr WindowHandle;
+        public uint Function;
+        [MarshalAs(UnmanagedType.LPWStr)] public string From;
+        [MarshalAs(UnmanagedType.LPWStr)] public string To;
+        public ushort Flags;
+        public int AnyOperationsAborted;
+        public IntPtr NameMappings;
+        [MarshalAs(UnmanagedType.LPWStr)] public string ProgressTitle;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHFileOperation(ref ShFileOperation operation);
 
     private static CleanupScanResult Scan(bool fullScan, int ageDays, IProgress<string>? progress, CancellationToken cancellationToken)
     {
@@ -424,3 +463,4 @@ internal static class ProcessRunner
         }
     }
 }
+

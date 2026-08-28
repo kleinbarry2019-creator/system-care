@@ -227,7 +227,7 @@ internal sealed class SystemCareForm : Form
         _cleanupStatus = new Label { Dock = DockStyle.Fill, Text = "Noch kein Bereinigungsscan ausgeführt. Dateien werden nur aufgelistet; Löschen geht in den Papierkorb.", ForeColor = Color.FromArgb(148, 163, 184), Padding = new Padding(2, 8, 0, 0) };
         root.Controls.Add(_cleanupStatus, 0, 2);
         _cleanupGrid = CreateGrid();
-        _cleanupGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Behalten (aus = löschen)", Width = 142, Name = "keep" });
+        _cleanupGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Löschen", Width = 82, Name = "keep" });
         _cleanupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Kategorie", Width = 155, Name = "category" });
         _cleanupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Pfad", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, Name = "path" });
         _cleanupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Grund", Width = 255, Name = "reason" });
@@ -237,8 +237,8 @@ internal sealed class SystemCareForm : Form
         cleanupGrid.CurrentCellDirtyStateChanged += (_, _) => { if (cleanupGrid.IsCurrentCellDirty) cleanupGrid.CommitEdit(DataGridViewDataErrorContexts.Commit); };
         cleanupGrid.CellValueChanged += (_, e) =>
         {
-            if (e.RowIndex >= 0 && e.ColumnIndex == cleanupGrid.Columns["keep"]!.Index && e.RowIndex < _cleanupItems.Count && cleanupGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value is bool keep)
-                _cleanupItems[e.RowIndex].Keep = keep;
+            if (e.RowIndex >= 0 && e.ColumnIndex == cleanupGrid.Columns["keep"]!.Index && e.RowIndex < _cleanupItems.Count && cleanupGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value is bool delete)
+                _cleanupItems[e.RowIndex].Keep = !delete;
         };
         cleanupGrid.CellContentClick += async (_, e) =>
         {
@@ -473,7 +473,7 @@ internal sealed class SystemCareForm : Form
 
     private async Task DeleteCleanupItemsAsync(IReadOnlyList<CleanupItem> items, string description)
     {
-        if (items.Count == 0) { MessageBox.Show(this, "Keine Elemente zum Löschen markiert. Entferne zuerst den Haken bei 'Behalten'.", "Bereinigung", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+        if (items.Count == 0) { MessageBox.Show(this, "Keine Elemente zum Löschen markiert. Setze zuerst den Haken bei 'Löschen'.", "Bereinigung", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
         if (items.Count > 1 && MessageBox.Show(this, $"{items.Count} {description} Elemente in den Papierkorb verschieben?", "Bereinigung", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
         int deleted = 0;
         foreach (var item in items)
@@ -496,7 +496,7 @@ internal sealed class SystemCareForm : Form
     {
         if (_cleanupGrid is null) return;
         _cleanupGrid.Rows.Clear();
-        foreach (var item in _cleanupItems) _cleanupGrid.Rows.Add(item.Keep, item.Category, item.Path, item.Reason, FormatBytes(item.SizeBytes));
+        foreach (var item in _cleanupItems) _cleanupGrid.Rows.Add(!item.Keep, item.Category, item.Path, item.Reason, FormatBytes(item.SizeBytes));
     }
 
     private void PopulateCleanupCategories(IReadOnlyList<CleanupCategorySummary> summaries)
@@ -600,3 +600,4 @@ internal sealed class SystemCareForm : Form
         base.OnFormClosed(e);
     }
 }
+
